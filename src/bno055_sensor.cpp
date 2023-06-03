@@ -181,9 +181,10 @@ void BNO055Sensor::publish_data()
   imu_data_msg.orientation_covariance[0] = 0.01590;
   imu_data_msg.orientation_covariance[4] = 0.01590;
   imu_data_msg.orientation_covariance[8] = 0.01590;
-  imu_data_msg.angular_velocity.x = d_gyro_xyz.x;
-  imu_data_msg.angular_velocity.y = d_gyro_xyz.y;
-  imu_data_msg.angular_velocity.z = d_gyro_xyz.z;
+  double degrees_to_rad = 0.0174532925;
+  imu_data_msg.angular_velocity.x = d_gyro_xyz.x * degrees_to_rad;
+  imu_data_msg.angular_velocity.y = d_gyro_xyz.y * degrees_to_rad;
+  imu_data_msg.angular_velocity.z = d_gyro_xyz.z * degrees_to_rad;
   imu_data_msg.angular_velocity_covariance[0] = 0.04;
   imu_data_msg.angular_velocity_covariance[4] = 0.04;
   imu_data_msg.angular_velocity_covariance[8] = 0.04;
