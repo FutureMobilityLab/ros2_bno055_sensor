@@ -26,18 +26,20 @@ namespace bno055_sensor
 BNO055Sensor::BNO055Sensor(rclcpp::NodeOptions const & options)
 :  Node("bno055_sensor_node"), count_(0)
 {
+  rclcpp::QoS FMLCarQoS(1);
+  FMLCarQoS.reliability(RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT);
   imu_raw_publisher_ = this->create_publisher<sensor_msgs::msg::Imu>("imu/raw", 10);
-  imu_data_publisher_ = this->create_publisher<sensor_msgs::msg::Imu>("imu/data", 10);
+  imu_data_publisher_ = this->create_publisher<sensor_msgs::msg::Imu>("imu/data", FMLCarQoS);
   gravity_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("gravity", 10);
   mag_publisher_ = this->create_publisher<sensor_msgs::msg::MagneticField>("mag", 10);
   temp_publisher_ = this->create_publisher<sensor_msgs::msg::Temperature>("temp", 10);
-  diagnostics_publisher_ = this->create_publisher<diagnostic_msgs::msg::DiagnosticStatus>("diagnostics", 10);
-  data_timer_ = this->create_wall_timer(10ms, std::bind(&BNO055Sensor::publish_data, this));
-  diagnostics_timer_ = this->create_wall_timer(1000ms, std::bind(&BNO055Sensor::publish_diagnostics, this));
+  diagnostics_publisher_ = this->create_publisher<diagnostic_msgs::msg::DiagnosticStatus>("bno055_diagnostics", 10);
+  data_timer_ = this->create_wall_timer(20ms, std::bind(&BNO055Sensor::publish_data, this));
+  diagnostics_timer_ = this->create_wall_timer(5000ms, std::bind(&BNO055Sensor::publish_diagnostics, this));
 
   this->declare_parameter<std::string>("i2c_address", "/dev/i2c-3");
   this->declare_parameter<std::string>("device_address", "0x29");
-  this->declare_parameter<std::string>("frame_id", "imu_link");
+  this->declare_parameter<std::string>("frame_id", "imu_frame");
 
   sensor_.bus_read = BNO055_I2C_bus_read;
   sensor_.bus_write = BNO055_I2C_bus_write;
@@ -164,11 +166,11 @@ void BNO055Sensor::publish_data()
   temp_publisher_->publish(temp_msg);
 
   // Do not use system calibration as it is known to be an unreliable signal.
-  if (gyro_calib_status < 2 || accel_calib_status < 2 || mag_calib_status < 2)
-  {
-    RCLCPP_WARN(this->get_logger(), "Fusion data is not reliable as system is not calibrated");
-    return;
-  }
+  // if (gyro_calib_status < 2 || mag_calib_status < 2) // || accel_calib_status < 2
+  // {
+  //   RCLCPP_WARN(this->get_logger(), "Fusion data is not reliable as system is not calibrated");
+  //   return;
+  // }
 
   // Covariances from: https://github.com/Octanis1/bosch_imu_driver/commit/d1132e27ecff46a63c128f7ecacc245c98b2811a
   auto imu_data_msg = sensor_msgs::msg::Imu();
@@ -303,7 +305,7 @@ void BNO055Sensor::publish_diagnostics()
       diagnostic_msg.values[4].key = "Calibration (MAG)";
       diagnostic_msg.values[4].value = std::to_string(mag_calib_status);
 
-      if (sys_calib_status < 1 || gyro_calib_status < 1 || accel_calib_status < 1 || mag_calib_status < 1)
+      if (sys_calib_status < 1 || gyro_calib_status < 1 || mag_calib_status < 1) // accel_calib_status < 1 || 
       {
 	diagnostic_msg.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
 	diagnostic_msg.message = "Poorly Calibrated";
